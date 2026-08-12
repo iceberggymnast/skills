@@ -12,6 +12,8 @@ Claude Code에서 쓰는 개인 제작 스킬 모음입니다.
 
 폴더째 `~/.claude/skills/` 아래에 복사하면 됩니다.
 
+레포를 `skills/` 폴더 자체로 clone하지 마세요 — README·LICENSE 같은 낱개 파일이 스킬 폴더와 같은 층에 섞입니다. 임시 위치에 clone한 뒤 스킬 폴더만 복사합니다.
+
 ```
 ~/.claude/skills/
 ├── git-writing/

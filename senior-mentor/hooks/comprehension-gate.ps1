@@ -7,6 +7,13 @@
 
 $ErrorActionPreference = 'SilentlyContinue'
 
+# Claude Code는 훅 stdin/stdout을 UTF-8로 다룬다. 콘솔 기본 코드페이지(cp949 등)로 두면
+#   주입 텍스트의 비ASCII 문자가 깨지므로 입출력 인코딩을 UTF-8로 고정한다.
+try {
+    [Console]::InputEncoding  = [System.Text.UTF8Encoding]::new($false)
+    [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+} catch {}
+
 function Write-Probe($text) {
     if ($env:COMPREHENSION_GATE_DEBUG -eq '1') {
         Add-Content -Path (Join-Path $PSScriptRoot 'probe.log') -Value $text -Encoding UTF8
