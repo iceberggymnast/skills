@@ -64,7 +64,7 @@ PR·이슈의 섹션 골격은 대체로 이미 잘 돌아갑니다. 이 스킬�
 
 | 항목 | 내용 |
 |---|---|
-| 에이전트 | Claude Code 기준. `SKILL.md`를 직접 읽는 다른 에이전트(codex 등)에서도 문서는 그대로 동작하며, 원장 경로를 프로필에 절대경로로 적어 공유합니다 |
+| 에이전트 | Claude Code 기준. 다른 에이전트(codex 등)는 `SKILL.md`를 스스로 찾지 않으므로, 그쪽 전역 지침에 프로필을 가리키는 한 줄을 심어야 합니다(BOOTSTRAP 0-1). 그 뒤로는 프로필이 원장 경로를 이어주어 같은 원장에 쌓입니다 |
 | 훅 | Claude Code의 `PostToolUse` 전용입니다. 다른 에이전트에서는 훅 없이 명시 호출로 씁니다 |
 | OS | 훅이 PowerShell 스크립트라 Windows가 기본입니다. macOS·Linux는 PowerShell 7(`pwsh`)을 설치해 등록 명령을 바꾸거나, 훅 없이 씁니다 |
 | 인코딩 | 한글이 든 `.ps1`은 UTF-8 BOM으로 저장해야 합니다. BOM이 없으면 Windows PowerShell 5.1이 cp949로 읽어 구문 오류로 죽습니다 |
