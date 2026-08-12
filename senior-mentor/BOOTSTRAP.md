@@ -20,13 +20,15 @@
   mentor-log.md           ← 1단계에서 생성
   mentee-profile.md       ← 2단계에서 생성
   hooks/
-    comprehension-gate.ps1 ← 3단계 (선택)
+    comprehension-gate.ps1 ← 3단계 (선택, 배포판 senior-mentor/hooks/에 포함)
   CLAUDE.md               ← 4단계
 ```
 
 `skills/` 바로 아래에는 **스킬 폴더만** 둔다. 그 디렉터리는 하위 폴더의 `SKILL.md`를 찾는 스캔 대상이라, 낱개 문서를 놓으면 다른 스킬과 같은 층에 섞인다. 스킬에 딸린 문서는 그 스킬 폴더 안에 둔다.
 
-경로는 전부 `~/.claude/` 기준이다. **스킬 문서 안에 절대 경로를 박지 않는다** — 사람마다 홈 디렉터리가 다르다.
+**기준 폴더를 먼저 정한다.** 홈 디렉터리에 `~/.claude`와 `~/.codex`가 있는지 확인하고, **`~/.claude`가 있으면 그쪽이 기준 폴더다** (둘 다 있어도 `.claude` 우선). `~/.codex`만 있으면 같은 구조를 그 아래에 만든다. 위 배치도의 경로는 전부 이 기준 폴더 아래다.
+
+원장·프로필을 만들면 **그 절대경로를 `mentee-profile.md`에 적는다** (2단계). 기준 폴더를 직접 읽지 못하는 다른 에이전트(codex 등)가 같은 원장을 참조하는 통로다. **스킬 문서 안에는 절대 경로를 박지 않는다** — 사람마다 홈 디렉터리가 다르다. 절대경로는 프로필(개인 파일)에만 둔다.
 
 `RATIONALE.md`는 배포에 포함하지 않는다. 원작성자의 관측 기록이라 받는 쪽에는 의미가 없고, 필요하면 각자 자기 것을 만든다.
 
@@ -73,6 +75,8 @@
 ## 2. 멘티 프로필 만들기
 
 `~/.claude/mentee-profile.md`. **이 파일이 없으면 `senior-mentor`는 리뷰를 시작하지 않는다.** 프로필 없이 설명하면 아는 것을 다시 가르치거나 모르는 것을 건너뛴다.
+
+프로필 상단에 **원장 두 개(`comprehension-debt.md`·`mentor-log.md`)와 이 프로필 자신의 절대경로**를 적는다 (0단계에서 정한 기준 폴더 기준). `~/.claude`를 직접 읽지 못하는 에이전트(codex 등)에서 이 스킬 세트를 쓸 때 그 절대경로로 같은 원장을 참조한다 — 에이전트마다 원장이 갈라지면 분포를 못 잰다.
 
 ### 2-1. 인터뷰
 
@@ -218,7 +222,7 @@ IDE에서 커밋하고, GitHub 웹에서 리뷰 코멘트를 달고 머지 버�
 
 | 부채 항목 예 | 성격 |
 |---|---|
-| "이 프로젝트의 항로 전환은 레벨 전환이 아니라 스폰테이블 교체" | **프로젝트 한정** — 원장에서 끝 |
+| "이 프로젝트의 챕터 전환은 레벨 전환이 아니라 스폰테이블 교체" | **프로젝트 한정** — 원장에서 끝 |
 | "무엇이 영속 스키마에 들어가고 무엇이 런타임 전용인가" | **범용** — 엔진·언어가 바뀌어도 같은 문제 |
 | "객체 수명·소유권 경계" | **범용** |
 
@@ -242,13 +246,31 @@ IDE에서 커밋하고, GitHub 웹에서 리뷰 코멘트를 달고 머지 버�
 
 **2-6에서 A(명시 호출만)나 C(보류)를 골랐으면 이 단계를 건너뛴다.** 밖에서 커밋하는 사람에게 훅은 걸리지 않는다.
 
-`~/.claude/hooks/comprehension-gate.ps1`이 하는 일:
+그 외의 경우 **세팅 여부를 여기서 명시적으로 묻는다** — 훅은 모든 커밋에 걸리는 상시 장치라 말없이 심지 않는다. 파일은 배포판에 포함되어 있다: `senior-mentor/hooks/comprehension-gate.ps1`. 이 훅은 Claude Code의 `PostToolUse` 형식 전용이다 — codex 등 다른 에이전트에서는 훅 없이 명시 호출로 쓴다.
+
+`comprehension-gate.ps1`이 하는 일:
 
 - 커밋·PR 도구 호출을 감지
 - `확장자 화이트리스트 AND NOT 경로 블랙리스트`로 코드 파일만 통과
 - 통과하면 이해 확인을 요청하는 컨텍스트를 주입
 
-`settings.json`의 `hooks.PostToolUse`에 등록한다.
+세팅하기로 했으면:
+
+1. 스킬 폴더의 `senior-mentor/hooks/comprehension-gate.ps1`을 `<기준 폴더>/hooks/`로 복사한다
+2. 스크립트의 `$denyPat` 주석 처리된 첫 줄에 **본인의 문서 레포·노트 볼트 경로를 채운다** — 코드 확장자가 있어도 이해 확인 대상이 아닌 곳이다
+3. `settings.json`의 `hooks.PostToolUse`에 등록한다:
+
+```json
+{
+  "matcher": "Bash",
+  "hooks": [
+    {
+      "type": "command",
+      "command": "powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"<기준 폴더 절대경로>\\hooks\\comprehension-gate.ps1\""
+    }
+  ]
+}
+```
 
 > **PostToolUse는 아무것도 차단하지 못한다.** 커밋은 이미 끝난 뒤라 되돌리라고 제안하지 않는다. 고칠 게 있으면 후속 커밋이다.
 >
@@ -291,12 +313,13 @@ IDE에서 커밋하고, GitHub 웹에서 리뷰 코멘트를 달고 머지 버�
 [ ] ~/.claude/comprehension-debt.md 에 네 섹션이 모두 있다
 [ ] ~/.claude/mentor-log.md 가 있다
 [ ] ~/.claude/mentee-profile.md 가 본인 답으로 채워져 있다
+[ ] mentee-profile.md 에 원장·프로필의 절대경로가 적혀 있다 (codex 등 다른 에이전트 참조용)
 [ ] 두 스킬 폴더에 각자의 RATIONALE.md 가 있다
 [ ] 2-6의 A/B/C 중 무엇을 골랐는지가 mentee-profile.md 에 적혀 있다
 [ ] 2-7의 지식 볼트 선택(경로 또는 "쌓지 않음")이 mentee-profile.md 에 적혀 있다
 [ ] (MCP 기반을 골랐으면) 쓰기 테스트를 한 번 통과했다
 [ ] (A 또는 C를 골랐으면) RATIONALE.md 에서 스킵률 항목을 지웠다
-[ ] (선택) 훅이 settings.json 에 등록되어 있고, 커밋 한 번에 실제로 발동한다
+[ ] 훅 세팅 여부를 물었고, 세팅했다면 settings.json 에 등록되어 커밋 한 번에 실제로 발동한다
 [ ] 전역 CLAUDE.md 에 O/X/? 보고 형식이 있다
 [ ] 스킬 문서 어디에도 남의 절대 경로가 없다
 ```
