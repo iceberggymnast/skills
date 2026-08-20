@@ -48,6 +48,19 @@ PR·이슈의 섹션 골격은 대체로 이미 잘 돌아갑니다. 이 스킬�
 
 ## 설치
 
+### 플러그인으로
+
+```
+/plugin marketplace add iceberggymnast/skills
+/plugin install dev-skills@iceberggymnast-skills
+```
+
+설치 화면에서 범위를 고르면 끝입니다. 요약에 `Run /reload-plugins to activate.`가 뜨면 그 명령을 한 번 실행합니다. 네 스킬이 함께 들어오고, 호출명에 플러그인 이름이 붙습니다 — `/dev-skills:senior-mentor`.
+
+**단, `RATIONALE.md`는 스킬 폴더에 만들지 마세요.** 플러그인은 캐시 디렉터리로 복사되고 `/plugin update` 때 그 디렉터리가 갈립니다. 위치는 [BOOTSTRAP 2-7](senior-mentor/BOOTSTRAP.md)의 주의 문단을 따릅니다.
+
+### 폴더 복사로
+
 폴더째 `~/.claude/skills/` 아래에 복사합니다.
 
 ```
@@ -57,6 +70,8 @@ PR·이슈의 섹션 골격은 대체로 이미 잘 돌아갑니다. 이 스킬�
 ├── senior-mentor/
 └── session-audit/
 ```
+
+(`.claude-plugin/`은 플러그인 배포용 메타데이터라 이 방식에서는 복사하지 않습니다.)
 
 레포를 `skills/` 폴더 자체로 clone하지 마세요. 그 디렉터리는 하위 폴더의 `SKILL.md`를 찾는 스캔 대상이라, README·LICENSE 같은 낱개 파일이 스킬 폴더와 같은 층에 섞입니다. 임시 위치에 clone한 뒤 스킬 폴더 네 개만 복사합니다.
 
