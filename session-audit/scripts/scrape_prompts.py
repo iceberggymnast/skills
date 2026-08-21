@@ -4,7 +4,10 @@
 """
 import json, os, glob, sys, collections
 
-PROJECTS  = os.path.join(os.path.expanduser("~"), ".claude", "projects")
+# CLAUDE_CONFIG_DIR로 설정 폴더를 옮긴 사람이 있다. 하드코딩하면 로그를 못 찾는데
+# glob은 없는 경로에 빈 목록을 내놓아 "로그가 없다"와 구분되지 않는다.
+_CONFIG   = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.join(os.path.expanduser("~"), ".claude")
+PROJECTS  = os.path.join(_CONFIG, "projects")
 OUT       = sys.argv[1] if len(sys.argv) > 1 else "clean.txt"
 MAX_CHARS = 1200   # 프롬프트 1건 상한. 붙여넣은 로그·문서 전문이 파일을 삼키는 것을 막는다
 
