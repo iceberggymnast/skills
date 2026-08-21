@@ -8,9 +8,11 @@
     {
       "name": "dev-skills",
       "source": ".",
-      "description": "git 텍스트 작성 · PR 리뷰 · AI 코드 이해 확인 · 세션 로그 전수 분석. 스킬 4종, 문서는 한국어입니다.",
-      "version": "0.1.0",
-      "author": { "name": "iceberggymnast" },
+      "description": "git 텍스트 작성 · PR 리뷰 · AI 코드 이해 확인 · 세션 로그 전수 분석 · CS 개념 학습. 스킬 5종, 문서는 한국어입니다.",
+      "version": "0.2.0",
+      "author": {
+        "name": "iceberggymnast"
+      },
       "license": "MIT",
       "homepage": "https://github.com/iceberggymnast/skills"
     }

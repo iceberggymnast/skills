@@ -1,7 +1,7 @@
 {
   "name": "dev-skills",
-  "description": "팀 개발에서 반복되는 네 가지 작업을 같은 절차로 돌리는 스킬 묶음 — git 텍스트 작성, PR 리뷰, AI 코드 이해 확인, 세션 로그 전수 분석. 문서는 한국어입니다.",
-  "version": "0.1.0",
+  "description": "팀 개발에서 반복되는 작업을 같은 절차로 돌리는 스킬 묶음 — git 텍스트 작성, PR 리뷰, AI 코드 이해 확인, 세션 로그 전수 분석, 그리고 작업이 만나지 않는 CS 개념 학습. 문서는 한국어입니다.",
+  "version": "0.2.0",
   "author": {
     "name": "iceberggymnast",
     "url": "https://github.com/iceberggymnast"
@@ -9,8 +9,16 @@
   "homepage": "https://github.com/iceberggymnast/skills",
   "repository": "https://github.com/iceberggymnast/skills",
   "license": "MIT",
-  "keywords": ["korean", "code-review", "pull-request", "mentoring", "session-analysis"],
+  "keywords": [
+    "korean",
+    "code-review",
+    "pull-request",
+    "mentoring",
+    "session-analysis",
+    "learning"
+  ],
   "skills": [
+    "./cs-drill",
     "./git-writing",
     "./pr-review-loop",
     "./senior-mentor",
