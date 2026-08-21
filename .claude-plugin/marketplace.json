@@ -8,8 +8,8 @@
     {
       "name": "dev-skills",
       "source": ".",
-      "description": "git 텍스트 작성 · PR 리뷰 · AI 코드 이해 확인 · 세션 로그 전수 분석 · CS 개념 학습. 스킬 5종, 문서는 한국어입니다.",
-      "version": "0.2.0",
+      "description": "git 텍스트 작성 · PR 리뷰 · AI 코드 이해 확인 · 세션 로그 전수 분석 · CS 개념 학습 · 스킬 발동률 점검. 스킬 6종, 문서는 한국어입니다.",
+      "version": "0.3.0",
       "author": {
         "name": "iceberggymnast"
       },
