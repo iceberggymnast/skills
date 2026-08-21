@@ -24,7 +24,7 @@ PAT = re.compile('Base directory for this skill:[^"]*?skills' + SEP + '([A-Za-z0
 # 훅 주입은 스킬 파일 로드 없이도 절차를 시작시킨다. 로드만 세면 훅으로 도는
 # 스킬의 발동률을 크게 과소평가하므로 따로 센다. 마커는 각 훅이 내보내는 문구다.
 HOOK_MARKERS = {
-    "senior-mentor(훅)": re.compile(r"\[예측 대조\]|\[복습 대상\]"),
+    "senior-mentor(훅)": re.compile(r"\[이해 확인 대상\]|\[복습 대상\]"),
     "cs-drill(훅)": re.compile(r"\[CS 복습\]"),
 }
 
