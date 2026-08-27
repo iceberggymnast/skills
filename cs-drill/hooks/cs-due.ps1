@@ -4,6 +4,8 @@
 #  - 개수만 알린다. 개념명을 알리면 사용자가 노트를 먼저 읽고 답할 수 있어 재대조가 무효가 된다.
 #  - 아무것도 시작하지 않는다. 훅은 신호만 보내고 실행은 스킬이 한다.
 #  - 읽기 실패·형식 불일치는 조용히 통과한다. 훅이 세션을 막으면 안 된다.
+#  - 일정의 출처는 진도표 한 곳이다. 표 행만 세지 않으면 학습 항목 본문에 남은
+#    같은 표기까지 세어져 한 개념이 두 건으로 보고된다.
 
 $ErrorActionPreference = 'SilentlyContinue'
 
@@ -19,17 +21,22 @@ $ledger = Join-Path $env:USERPROFILE '.claude\cs-progress.md'
 if (-not (Test-Path $ledger)) { exit 0 }
 
 try {
-    $text = [IO.File]::ReadAllText($ledger, [Text.UTF8Encoding]::new($false))
+    $lines = [IO.File]::ReadAllLines($ledger, [Text.UTF8Encoding]::new($false))
 } catch { exit 0 }
 
 $today = (Get-Date).Date
 $overdue = 0
 
-foreach ($m in [regex]::Matches($text, 'due:(\d{4})-(\d{2})-(\d{2})')) {
-    try {
-        $d = Get-Date -Year ([int]$m.Groups[1].Value) -Month ([int]$m.Groups[2].Value) -Day ([int]$m.Groups[3].Value)
-        if ($d.Date -le $today) { $overdue++ }
-    } catch { }
+# 표 행만 센다. 진도표가 일정의 유일한 출처이고, 학습 항목 본문에 재대조
+# 기록을 적으며 같은 표기를 남기면 한 개념이 두 번 세어진다.
+foreach ($line in $lines) {
+    if (-not $line.TrimStart().StartsWith('|')) { continue }
+    foreach ($m in [regex]::Matches($line, 'due:(\d{4})-(\d{2})-(\d{2})')) {
+        try {
+            $d = Get-Date -Year ([int]$m.Groups[1].Value) -Month ([int]$m.Groups[2].Value) -Day ([int]$m.Groups[3].Value)
+            if ($d.Date -le $today) { $overdue++ }
+        } catch { }
+    }
 }
 
 if ($overdue -lt 1) { exit 0 }
