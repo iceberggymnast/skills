@@ -9,15 +9,17 @@
   - 서브에이전트 레인 안의 발동. 메인 jsonl에 안 들어온다(기본 제외, --with-subagents로 포함)
   - cleanupPeriodDays로 이미 지워진 기간. 받는 쪽 기본값은 30일이라 --days를 그보다
     크게 줘도 실제 창은 30일이다. 출력의 "기간"이 실제 창이다
-  - --days는 파일 수정시각 기준이다. 옛 세션을 --resume하면 그 세션의 오래된 발동이
-    통째로 창 안에 들어온다. 반대로 창 안에서 시작된 대화만 세지도 않는다
+  - --days는 세션 내용의 첫 timestamp 기준이다. 파일 수정시각으로 세던 때는 옛 세션이
+    대량으로 창 안에 들어와 세션수가 2배로 부풀었다(2회차 점검 실측 510 대 256).
+    반대 사각이 생긴다 — 창 밖에서 시작해 창 안에서 재개한 세션은 그 안의 발동까지
+    통째로 빠진다. timestamp가 없는 파일은 수정시각으로 대신한다
 
 부풀리는 것:
   - 감지 문자열을 화면에 찍은 세션은 자기가 분자에 섞인다(로그를 분석·디버깅한 세션)
 
 사용: python skill-usage.py [--days N] [--with-subagents]
 """
-import os, re, sys, json, io, time
+import os, re, sys, json, io, time, calendar
 from collections import Counter
 
 # stdout이 리다이렉트되면 Windows에서 로케일 코드페이지로 인코딩된다.
@@ -52,6 +54,18 @@ HOOK_MARKERS = {
     "cs-drill(훅)": re.compile(r"\[CS 복습\]"),
 }
 
+# 세션의 시작 시각은 파일 안의 첫 timestamp(UTC)다. 파일 수정시각은 재개·대량 갱신으로
+# 움직이므로 창의 기준으로 쓰지 않는다.
+TS = re.compile(r'"timestamp":"(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})')
+
+
+def first_timestamp(text):
+    m = TS.search(text)
+    if not m:
+        return None
+    return calendar.timegm(tuple(int(x) for x in m.groups()) + (0, 0, 0))
+
+
 days = None
 with_sub = "--with-subagents" in sys.argv
 if "--days" in sys.argv:
@@ -82,19 +96,21 @@ for dirpath, _, files in os.walk(ROOT):
             continue
         p = os.path.join(dirpath, fn)
         try:
-            mt = os.path.getmtime(p)
+            text = io.open(p, encoding="utf-8", errors="replace").read()
         except OSError:
             continue
+        mt = first_timestamp(text)
+        if mt is None:
+            try:
+                mt = os.path.getmtime(p)
+            except OSError:
+                continue
         if cutoff and mt < cutoff:
             continue
         sessions += 1
         oldest = mt if oldest is None else min(oldest, mt)
         newest = mt if newest is None else max(newest, mt)
         per_project[os.path.relpath(dirpath, ROOT).split(os.sep)[0]] += 1
-        try:
-            text = io.open(p, encoding="utf-8", errors="replace").read()
-        except OSError:
-            continue
         raw = PAT.findall(text)
         # 스킬 이름은 kebab-case 소문자다. 여기 안 맞는 것은 이스케이프가 여러 겹인
         # 인용문에서 나온 파편이라 거른다. 조용히 버리지 않고 아래 "거른 것"에 남긴다.
@@ -130,7 +146,7 @@ out = {
         "다른 하네스(codex 등)의 발동",
         None if with_sub else "서브에이전트 레인 내부",
         "cleanupPeriodDays로 삭제된 기간 — 출력의 '기간'이 실제 창이다",
-        "--days는 파일 수정시각 기준이라 재개한 옛 세션이 창 안으로 들어온다",
+        "--days는 세션 첫 timestamp 기준이라 창 밖에서 시작해 창 안에서 재개한 세션의 발동은 통째로 빠진다",
     ] if x],
     "부풀리는것": ["감지 문자열을 화면에 찍은 세션은 자기가 분자에 섞인다"],
     "거른것": dict(dropped.most_common(10)),

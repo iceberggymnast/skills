@@ -395,7 +395,7 @@ IDE에서 커밋하고, GitHub 웹에서 리뷰 코멘트를 달고 머지 버�
   "hooks": {
     "PostToolUse": [
       {
-        "matcher": "Bash",
+        "matcher": "Bash|PowerShell",
         "hooks": [
           {
             "type": "command",
@@ -408,7 +408,7 @@ IDE에서 커밋하고, GitHub 웹에서 리뷰 코멘트를 달고 머지 버�
 }
 ```
 
-matcher `"Bash"`는 Bash 도구로 실행된 커밋을 잡는다. 커밋이 PowerShell 도구로 실행되는 구성이면 `"Bash|PowerShell"`로 넓힌다.
+matcher `"Bash|PowerShell"`는 Bash 도구와 PowerShell 도구로 실행된 커밋을 둘 다 잡는다. 원작성자 실행에서 `"Bash"`만 걸어 두었을 때 PowerShell 도구 커밋이 훅을 우회하는 것이 관측돼 기본값을 넓혔다. PowerShell 도구가 없는 구성이면 `"Bash"`로 좁혀도 된다.
 
 > **PostToolUse는 아무것도 차단하지 못한다.** 커밋은 이미 끝난 뒤라 되돌리라고 제안하지 않는다. 고칠 게 있으면 후속 커밋이다.
 >
