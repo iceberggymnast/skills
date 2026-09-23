@@ -104,6 +104,27 @@ foreach ($f in ($files | Where-Object { $_ })) {
 }
 if ($targets.Count -eq 0) { exit 0 }
 
+# --- 하루 예산 --------------------------------------------------------------
+# 오늘 날짜로 새로 올라간 부채 항목 수. 재대조·리뷰 측 누락 제목은 새 개념이 아니므로 뺀다.
+# 절 경계로 거르지 않고 파일 전체의 제목을 센다 — 파일 끝에 덧붙여진 항목이 다른 절 아래로
+#   들어간 실례가 있다.
+# 원장을 못 읽으면 0으로 두고 진행한다 — 훅이 작업을 막으면 안 된다.
+$dailyNewCap = 3
+$newToday = 0
+$ledger = Join-Path $env:USERPROFILE '.claude\comprehension-debt.md'
+$today = Get-Date -Format 'yyyy-MM-dd'
+try {
+    foreach ($line in [IO.File]::ReadLines($ledger, [Text.Encoding]::UTF8)) {
+        if ($line.StartsWith("### $today") -and $line -notmatch '재대조|리뷰 측 누락') { $newToday++ }
+    }
+} catch {}
+$budgetLeft = [Math]::Max(0, $dailyNewCap - $newToday)
+$budgetLine = if ($budgetLeft -gt 0) {
+    "- 하루 예산: 오늘 새 부채 항목 $($newToday)/$($dailyNewCap)건, 남은 예산 $($budgetLeft). 첫 질문은 판별점이 성립하는 미복습 항목의 겨냥을 우선하라"
+} else {
+    "- 하루 예산 소진(오늘 새 부채 항목 $($newToday)/$($dailyNewCap)건): 새 개념은 묻지 말고 겨냥 질문만 내라. 겨냥할 줄이 없으면 comprehension-debt.md의 '## 이연 기록'에 한 줄만 남겨라"
+}
+
 # --- 컨텍스트 주입 ----------------------------------------------------------
 $shown = ($targets | Select-Object -First 6) -join ', '
 $more  = if ($targets.Count -gt 6) { " 외 $($targets.Count - 6)개" } else { '' }
@@ -113,18 +134,21 @@ if ($isCommit) {
 [이해 확인 대상] 방금 커밋된 코드 파일: $shown$more
 
 senior-mentor 스킬을 모드 C(확인)로 실행하라. 규칙:
+$budgetLine
 - 예측 질문 최대 3개, 파일 최대 2개
 - "모르겠다"가 2회 나오면 중단하지 말고 설명 모드로 전환해 가르치고 comprehension-debt.md에 적재
 - 커밋은 이미 완료됐다. 되돌리라고 제안하지 마라
-- 사용자가 생략을 원하면 따르되 comprehension-debt.md에 스킵 기록 한 줄을 남겨라
-- 질문을 미루더라도 무기록으로 지나가지 마라 — 연발 커밋 구간이면 구간 단위 스킵 기록을 남기고, 작업이 일단락될 때 마감 대조로 몰아서 물어라(SKILL.md '연발 구간' 절)
+- 사용자가 생략을 원하면 따르되 comprehension-debt.md의 '## 스킵 기록'에 한 줄을 남겨라(사용자 거절만 여기에 쓴다)
+- 질문을 미루더라도 무기록으로 지나가지 마라 — 연발 커밋 구간이면 '## 이연 기록'에 구간 단위 한 줄을 남기고, 작업이 일단락될 때 마감 대조로 몰아서 물어라(SKILL.md '연발 구간' 절)
 "@
 } else {
     $msg = @"
 [복습 대상] PR에 포함된 코드 파일: $shown$more
 
 senior-mentor 스킬을 러프 복습 모드로 실행하라. 규칙:
+$budgetLine
 - 새 예측 질문을 내지 말고, comprehension-debt.md에서 이 PR 범위에 해당하는 미복습 항목을 꺼내 확인하라
+- 4주를 넘긴 미복습 항목은 묻지 말고 설명으로 다시 열고 '- 재열기: 날짜' 한 줄을 남겨라
 - 확인된 항목은 복습 체크 칸을 채워라
 - PR 본문은 Claude가 대신 쓰지 말고 사용자의 답으로 구성하라
 "@
