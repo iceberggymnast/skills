@@ -113,16 +113,46 @@ $dailyNewCap = 3
 $newToday = 0
 $ledger = Join-Path $env:USERPROFILE '.claude\comprehension-debt.md'
 $today = Get-Date -Format 'yyyy-MM-dd'
-try {
-    foreach ($line in [IO.File]::ReadLines($ledger, [Text.Encoding]::UTF8)) {
-        if ($line.StartsWith("### $today") -and $line -notmatch '재대조|리뷰 측 누락') { $newToday++ }
+$lines = @()
+try { $lines = [IO.File]::ReadAllLines($ledger, [Text.Encoding]::UTF8) } catch {}
+foreach ($line in $lines) {
+    if ($line.StartsWith("### $today") -and $line -notmatch '재대조|리뷰 측 누락') { $newToday++ }
+}
+
+# --- 활성 상한 · 당겨온 복습 --------------------------------------------------
+# 활성 미복습 = '- 복습 체크:' 줄 중 두 칸이 다 닫히지 않았고 '보관'이 안 붙은 것.
+# 마지막으로 물은 날 = 항목의 '- 당겨온 복습:'·'- 재열기:' 줄 중 최신, 없으면 제목 날짜.
+#   이 줄들은 '복습 체크' 줄 뒤에 붙으므로 항목이 끝날 때까지 모은 뒤 판정한다.
+# 날짜로 시작하지 않는 제목(형식 안내 템플릿)과 '## ' 절 제목은 항목 경계로만 쓴다.
+$activeCap = 20
+$items = @()
+$cur = $null
+foreach ($line in $lines) {
+    if ($line.StartsWith('## ') -or $line.StartsWith('### ')) {
+        if ($cur) { $items += $cur }
+        $cur = $null
+        if ($line -match '^### (\d{4}-\d{2}-\d{2}) ') { $cur = @{ Head = $line.Substring(4); Last = $Matches[1]; Active = $false } }
+        continue
     }
-} catch {}
-$budgetLeft = [Math]::Max(0, $dailyNewCap - $newToday)
-$budgetLine = if ($budgetLeft -gt 0) {
-    "- 하루 예산: 오늘 새 부채 항목 $($newToday)/$($dailyNewCap)건, 남은 예산 $($budgetLeft). 첫 질문은 판별점이 성립하는 미복습 항목의 겨냥을 우선하라"
+    if (-not $cur) { continue }
+    if ($line -match '^- (당겨온 복습|재열기): *(\d{4}-\d{2}-\d{2})' -and $Matches[2] -gt $cur.Last) { $cur.Last = $Matches[2] }
+    if ($line.StartsWith('- 복습 체크:') -and $line -notmatch '보관' -and ([regex]::Matches($line, '\[[xX]\]').Count -lt 2)) { $cur.Active = $true }
+}
+if ($cur) { $items += $cur }
+
+$active = @($items | Where-Object { $_.Active }).Count
+$pullDone = @($lines | Where-Object { $_.Contains($today) -and $_.Contains('당겨온 복습') }).Count -gt 0
+$cutoff = (Get-Date).AddDays(-7).ToString('yyyy-MM-dd')
+$pullPick = $items | Where-Object { $_.Active -and $_.Last -le $cutoff } | Sort-Object { $_.Last } | Select-Object -First 1
+
+$canAdd = ($newToday -lt $dailyNewCap) -and ($active -lt $activeCap)
+$budgetLine = if ($canAdd) {
+    "- 새 부채 항목: 오늘 $($newToday)/$($dailyNewCap)건, 활성 미복습 $($active)/$($activeCap)건. 새 항목을 만들 수 있다. 예측 질문은 판별점이 성립하는 미복습 항목의 겨냥을 우선하라"
 } else {
-    "- 하루 예산 소진(오늘 새 부채 항목 $($newToday)/$($dailyNewCap)건): 새 개념은 묻지 말고 겨냥 질문만 내라. 겨냥할 줄이 없으면 comprehension-debt.md의 '## 이연 기록'에 한 줄만 남겨라"
+    "- 새 부채 항목 불가(오늘 $($newToday)/$($dailyNewCap)건, 활성 미복습 $($active)/$($activeCap)건): 새 개념은 묻지 말고 겨냥 질문만 내라. 겨냥할 줄이 없으면 comprehension-debt.md의 '## 이연 기록'에 한 줄만 남겨라"
+}
+if (-not $pullDone -and $pullPick) {
+    $budgetLine += "`n- 당겨온 복습(오늘 첫 회): 새 질문보다 먼저 원장 항목 '$($pullPick.Head)'의 판별점을 표면을 바꿔 한 문항 물어라. 묻기 전에 어느 항목인지 말하지 마라. 미루거나 거절되면 그 사실을 한 줄 남겨라(SKILL.md '당겨온 복습' 절)"
 }
 
 # --- 컨텍스트 주입 ----------------------------------------------------------
@@ -147,8 +177,7 @@ $budgetLine
 
 senior-mentor 스킬을 러프 복습 모드로 실행하라. 규칙:
 $budgetLine
-- 새 예측 질문을 내지 말고, comprehension-debt.md에서 이 PR 범위에 해당하는 미복습 항목을 꺼내 확인하라
-- 4주를 넘긴 미복습 항목은 묻지 말고 설명으로 다시 열고 '- 재열기: 날짜' 한 줄을 남겨라
+- 새 예측 질문을 내지 말고, comprehension-debt.md에서 이 PR 범위에 해당하는 활성 미복습 항목 중 7일 안에 묻지 않은 것을 꺼내 판별점을 표면을 바꿔 물어라. 틀리면 그 자리에서 설명하라(SKILL.md '당겨온 복습' 절)
 - 확인된 항목은 복습 체크 칸을 채워라
 - PR 본문은 Claude가 대신 쓰지 말고 사용자의 답으로 구성하라
 "@
