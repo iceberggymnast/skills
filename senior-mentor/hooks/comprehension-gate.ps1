@@ -121,7 +121,8 @@ foreach ($line in $lines) {
 
 # --- 활성 상한 · 당겨온 복습 --------------------------------------------------
 # 활성 미복습 = '- 복습 체크:' 줄 중 두 칸이 다 닫히지 않았고 '보관'이 안 붙은 것.
-# 마지막으로 물은 날 = 항목의 '- 당겨온 복습:'·'- 재열기:' 줄 중 최신, 없으면 제목 날짜.
+# 마지막으로 물은 날 = 항목의 '- 당겨온 복습:'·'- 재열기:'·'- 재대조' 줄 중 최신, 없으면 제목 날짜.
+#   겨냥·PR 러프 복습 결과는 '- 재대조 YYYY-MM-DD' 줄로 남는다. 이걸 안 읽으면 어제 겨냥한 항목이 오늘 또 나온다.
 #   이 줄들은 '복습 체크' 줄 뒤에 붙으므로 항목이 끝날 때까지 모은 뒤 판정한다.
 # 날짜로 시작하지 않는 제목(형식 안내 템플릿)과 '## ' 절 제목은 항목 경계로만 쓴다.
 $activeCap = 20
@@ -135,7 +136,7 @@ foreach ($line in $lines) {
         continue
     }
     if (-not $cur) { continue }
-    if ($line -match '^- (당겨온 복습|재열기): *(\d{4}-\d{2}-\d{2})' -and $Matches[2] -gt $cur.Last) { $cur.Last = $Matches[2] }
+    if ($line -match '^- (당겨온 복습|재열기|재대조):? *(\d{4}-\d{2}-\d{2})' -and $Matches[2] -gt $cur.Last) { $cur.Last = $Matches[2] }
     if ($line.StartsWith('- 복습 체크:') -and $line -notmatch '보관' -and ([regex]::Matches($line, '\[[xX]\]').Count -lt 2)) { $cur.Active = $true }
 }
 if ($cur) { $items += $cur }
