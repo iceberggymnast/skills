@@ -111,7 +111,7 @@ PR·이슈의 섹션 골격은 대체로 이미 잘 돌아갑니다. 이 스킬�
 
 [senior-mentor/BOOTSTRAP.md](senior-mentor/BOOTSTRAP.md)가 그 절차입니다. 원장 만들기, 프로필 인터뷰, 훅 세팅, 도입 확인 체크리스트까지 순서대로 있습니다. **여섯 스킬 모두 성공 기준을 `RATIONALE.md`에 두는데, 이 파일은 원작성자의 관측 기록이라 배포에 포함되지 않습니다.** BOOTSTRAP 2-7의 형식대로 각자 만들면 됩니다.
 
-훅 두 개가 함께 들어 있습니다. 커밋·PR 직후 자동 발동에 쓰는 `senior-mentor/hooks/comprehension-gate.ps1`(세팅 절차는 BOOTSTRAP 3단계)과, 복습 기한을 알리는 `cs-drill/hooks/cs-due.ps1`(`SessionStart`에 등록)입니다. **둘 다 선택입니다** — 없으면 명시 호출로 씁니다.
+훅 세 개가 함께 들어 있습니다. 커밋·PR 직후 자동 발동에 쓰는 `senior-mentor/hooks/comprehension-gate.ps1`(세팅 절차는 BOOTSTRAP 3단계), 복습 기한을 알리는 `cs-drill/hooks/cs-due.ps1`(`SessionStart`에 등록), PR·이슈·코멘트를 올린 직후 본문에 린트를 다시 돌리는 `git-writing/hooks/pr-body-lint.ps1`(`PostToolUse`에 matcher `Bash|PowerShell`로 등록)입니다. 마지막 것은 `~/.claude/skills/git-writing/scripts/prose-lint.py`를 찾으므로, 스킬을 다른 곳에 설치했으면 스크립트 안의 그 경로를 고칩니다. **셋 다 선택입니다** — 없으면 명시 호출로 씁니다.
 
 ## 호환성
 

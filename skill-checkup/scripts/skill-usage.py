@@ -52,6 +52,7 @@ NAME_OK = re.compile(r"^[a-z][a-z0-9]+(-[a-z0-9]+)*$")
 HOOK_MARKERS = {
     "senior-mentor(훅)": re.compile(r"\[이해 확인 대상\]|\[복습 대상\]"),
     "cs-drill(훅)": re.compile(r"\[CS 복습\]"),
+    "git-writing(훅)": re.compile(r"\[본문 린트\]"),
 }
 
 # 세션의 시작 시각은 파일 안의 첫 timestamp(UTC)다. 파일 수정시각은 재개·대량 갱신으로
