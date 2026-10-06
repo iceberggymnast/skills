@@ -4,6 +4,10 @@
 #  - PostToolUse라서 구조적으로 아무것도 차단하지 못한다. 알림만 한다.
 #  - 입력 형식을 못 읽거나 판별에 실패하면 조용히 통과한다. 훅이 작업을 막으면 안 된다.
 #  - 대상 판정: 확장자 화이트리스트 AND NOT 경로 블랙리스트
+#  - -BudgetOnly: stdin을 읽지 않고 부채 원장의 하루 예산·활성 상한만 세어 한 줄로 낸다.
+#    훅이 없는 경로(모드 Q, pr-review-loop 3.5)가 적재 직전에 부른다.
+
+param([switch]$BudgetOnly)
 
 $ErrorActionPreference = 'SilentlyContinue'
 
@@ -18,6 +22,63 @@ function Write-Probe($text) {
     if ($env:COMPREHENSION_GATE_DEBUG -eq '1') {
         Add-Content -Path (Join-Path $PSScriptRoot 'probe.log') -Value $text -Encoding UTF8
     }
+}
+
+# 부채 원장을 세어 새 항목을 만들 수 있는지와 당겨온 복습 후보를 돌려준다.
+# 커밋·PR 경로와 -BudgetOnly(모드 Q·pr-review-loop 3.5)가 같이 쓴다.
+function Get-DebtBudget {
+    # --- 하루 예산 --------------------------------------------------------------
+    # 오늘 날짜로 새로 올라간 부채 항목 수. 재대조·리뷰 측 누락 제목은 새 개념이 아니므로 뺀다.
+    # 절 경계로 거르지 않고 파일 전체의 제목을 센다 — 파일 끝에 덧붙여진 항목이 다른 절 아래로
+    #   들어간 실례가 있다.
+    # 원장을 못 읽으면 0으로 두고 진행한다 — 훅이 작업을 막으면 안 된다.
+    $dailyNewCap = 3
+    $newToday = 0
+    $ledger = Join-Path $env:USERPROFILE '.claude\comprehension-debt.md'
+    $today = Get-Date -Format 'yyyy-MM-dd'
+    $lines = @()
+    try { $lines = [IO.File]::ReadAllLines($ledger, [Text.Encoding]::UTF8) } catch {}
+    foreach ($line in $lines) {
+        if ($line.StartsWith("### $today") -and $line -notmatch '재대조|리뷰 측 누락') { $newToday++ }
+    }
+
+    # --- 활성 상한 · 당겨온 복습 --------------------------------------------------
+    # 활성 미복습 = '- 복습 체크:' 줄 중 두 칸이 다 닫히지 않았고 '보관'이 안 붙은 것.
+    # 마지막으로 물은 날 = 항목의 '- 당겨온 복습:'·'- 재열기:'·'- 재대조' 줄 중 최신, 없으면 제목 날짜.
+    #   겨냥·PR 러프 복습 결과는 '- 재대조 YYYY-MM-DD' 줄로 남는다. 이걸 안 읽으면 어제 겨냥한 항목이 오늘 또 나온다.
+    #   이 줄들은 '복습 체크' 줄 뒤에 붙으므로 항목이 끝날 때까지 모은 뒤 판정한다.
+    # 날짜로 시작하지 않는 제목(형식 안내 템플릿)과 '## ' 절 제목은 항목 경계로만 쓴다.
+    $activeCap = 20
+    $items = @()
+    $cur = $null
+    foreach ($line in $lines) {
+        if ($line.StartsWith('## ') -or $line.StartsWith('### ')) {
+            if ($cur) { $items += $cur }
+            $cur = $null
+            if ($line -match '^### (\d{4}-\d{2}-\d{2}) ') { $cur = @{ Head = $line.Substring(4); Last = $Matches[1]; Active = $false } }
+            continue
+        }
+        if (-not $cur) { continue }
+        if ($line -match '^- (당겨온 복습|재열기|재대조):? *(\d{4}-\d{2}-\d{2})' -and $Matches[2] -gt $cur.Last) { $cur.Last = $Matches[2] }
+        if ($line.StartsWith('- 복습 체크:') -and $line -notmatch '보관' -and ([regex]::Matches($line, '\[[xX]\]').Count -lt 2)) { $cur.Active = $true }
+    }
+    if ($cur) { $items += $cur }
+
+    $active = @($items | Where-Object { $_.Active }).Count
+    $pullDone = @($lines | Where-Object { $_.Contains($today) -and $_.Contains('당겨온 복습') }).Count -gt 0
+    $cutoff = (Get-Date).AddDays(-7).ToString('yyyy-MM-dd')
+    $pullPick = $items | Where-Object { $_.Active -and $_.Last -le $cutoff } | Sort-Object { $_.Last } | Select-Object -First 1
+
+    $canAdd = ($newToday -lt $dailyNewCap) -and ($active -lt $activeCap)
+    @{ NewToday = $newToday; DailyNewCap = $dailyNewCap; Active = $active; ActiveCap = $activeCap
+       PullDone = $pullDone; PullPick = $pullPick; CanAdd = $canAdd }
+}
+
+if ($BudgetOnly) {
+    $b = Get-DebtBudget
+    $verdict = if ($b.CanAdd) { '새 항목을 만들 수 있다' } else { '새 항목 불가' }
+    [Console]::Out.Write("새 부채 항목: 오늘 $($b.NewToday)/$($b.DailyNewCap)건, 활성 미복습 $($b.Active)/$($b.ActiveCap)건 — $verdict")
+    exit 0
 }
 
 $raw = [Console]::In.ReadToEnd()
@@ -104,49 +165,11 @@ foreach ($f in ($files | Where-Object { $_ })) {
 }
 if ($targets.Count -eq 0) { exit 0 }
 
-# --- 하루 예산 --------------------------------------------------------------
-# 오늘 날짜로 새로 올라간 부채 항목 수. 재대조·리뷰 측 누락 제목은 새 개념이 아니므로 뺀다.
-# 절 경계로 거르지 않고 파일 전체의 제목을 센다 — 파일 끝에 덧붙여진 항목이 다른 절 아래로
-#   들어간 실례가 있다.
-# 원장을 못 읽으면 0으로 두고 진행한다 — 훅이 작업을 막으면 안 된다.
-$dailyNewCap = 3
-$newToday = 0
-$ledger = Join-Path $env:USERPROFILE '.claude\comprehension-debt.md'
-$today = Get-Date -Format 'yyyy-MM-dd'
-$lines = @()
-try { $lines = [IO.File]::ReadAllLines($ledger, [Text.Encoding]::UTF8) } catch {}
-foreach ($line in $lines) {
-    if ($line.StartsWith("### $today") -and $line -notmatch '재대조|리뷰 측 누락') { $newToday++ }
-}
-
-# --- 활성 상한 · 당겨온 복습 --------------------------------------------------
-# 활성 미복습 = '- 복습 체크:' 줄 중 두 칸이 다 닫히지 않았고 '보관'이 안 붙은 것.
-# 마지막으로 물은 날 = 항목의 '- 당겨온 복습:'·'- 재열기:'·'- 재대조' 줄 중 최신, 없으면 제목 날짜.
-#   겨냥·PR 러프 복습 결과는 '- 재대조 YYYY-MM-DD' 줄로 남는다. 이걸 안 읽으면 어제 겨냥한 항목이 오늘 또 나온다.
-#   이 줄들은 '복습 체크' 줄 뒤에 붙으므로 항목이 끝날 때까지 모은 뒤 판정한다.
-# 날짜로 시작하지 않는 제목(형식 안내 템플릿)과 '## ' 절 제목은 항목 경계로만 쓴다.
-$activeCap = 20
-$items = @()
-$cur = $null
-foreach ($line in $lines) {
-    if ($line.StartsWith('## ') -or $line.StartsWith('### ')) {
-        if ($cur) { $items += $cur }
-        $cur = $null
-        if ($line -match '^### (\d{4}-\d{2}-\d{2}) ') { $cur = @{ Head = $line.Substring(4); Last = $Matches[1]; Active = $false } }
-        continue
-    }
-    if (-not $cur) { continue }
-    if ($line -match '^- (당겨온 복습|재열기|재대조):? *(\d{4}-\d{2}-\d{2})' -and $Matches[2] -gt $cur.Last) { $cur.Last = $Matches[2] }
-    if ($line.StartsWith('- 복습 체크:') -and $line -notmatch '보관' -and ([regex]::Matches($line, '\[[xX]\]').Count -lt 2)) { $cur.Active = $true }
-}
-if ($cur) { $items += $cur }
-
-$active = @($items | Where-Object { $_.Active }).Count
-$pullDone = @($lines | Where-Object { $_.Contains($today) -and $_.Contains('당겨온 복습') }).Count -gt 0
-$cutoff = (Get-Date).AddDays(-7).ToString('yyyy-MM-dd')
-$pullPick = $items | Where-Object { $_.Active -and $_.Last -le $cutoff } | Sort-Object { $_.Last } | Select-Object -First 1
-
-$canAdd = ($newToday -lt $dailyNewCap) -and ($active -lt $activeCap)
+# --- 하루 예산 · 활성 상한 · 당겨온 복습 (Get-DebtBudget) --------------------
+$budget = Get-DebtBudget
+$newToday = $budget.NewToday; $dailyNewCap = $budget.DailyNewCap
+$active = $budget.Active; $activeCap = $budget.ActiveCap
+$pullDone = $budget.PullDone; $pullPick = $budget.PullPick; $canAdd = $budget.CanAdd
 $budgetLine = if ($canAdd) {
     "- 새 부채 항목: 오늘 $($newToday)/$($dailyNewCap)건, 활성 미복습 $($active)/$($activeCap)건. 새 항목을 만들 수 있다. 예측 질문은 판별점이 성립하는 미복습 항목의 겨냥을 우선하라"
 } else {
