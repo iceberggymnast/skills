@@ -49,9 +49,9 @@ if (-not $bodyFile) {
     # 상대 경로는 명령의 작업 디렉터리 기준이다. comprehension-gate.ps1과 같은 순서로 찾는다.
     $cwd = $payload.cwd
     if (-not $cwd) { $cwd = (Get-Location).Path }
-    if ($command -match '(?:^|[;&|]\s*)cd\s+"([^"]+)"\s*&&') { $cwd = $Matches[1] }
-    elseif ($command -match "(?:^|[;&|]\s*)cd\s+'([^']+)'\s*&&") { $cwd = $Matches[1] }
-    elseif ($command -match '(?:^|[;&|]\s*)cd\s+([^\s;&|]+)\s*&&') { $cwd = $Matches[1] }
+    if ($command -match '(?:^|[;&|\r\n]\s*)cd\s+"([^"]+)"\s*(?:&&|\r?\n)') { $cwd = $Matches[1] }
+    elseif ($command -match "(?:^|[;&|\r\n]\s*)cd\s+'([^']+)'\s*(?:&&|\r?\n)") { $cwd = $Matches[1] }
+    elseif ($command -match '(?:^|[;&|\r\n]\s*)cd\s+([^\s;&|]+)\s*(?:&&|\r?\n)') { $cwd = $Matches[1] }
     # Bash 도구는 `/c/Git/...` 형식을 쓴다. Windows 경로로 바꾼다.
     if ($cwd -match '^/([a-zA-Z])(/.*)?$') { $cwd = $Matches[1] + ':' + $(if ($Matches[2]) { $Matches[2] } else { '/' }) }
     if ($bodyFile -match '^/([a-zA-Z])(/.*)$') { $bodyFile = $Matches[1] + ':' + $Matches[2] }

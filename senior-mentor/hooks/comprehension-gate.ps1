@@ -97,8 +97,9 @@ if (-not $command) { exit 0 }
 # --- 어떤 종류의 이벤트인가 -------------------------------------------------
 # git commit  → 디테일 확인(예측-대조)
 # gh pr create → 러프 복습(커밋에 쌓인 부채 기록 재확인)
-$isCommit = $command -match '(^|[;&|]\s*)git\s+(-C\s+\S+\s+|--\S+\s+)*commit\b'
-$isPr     = $command -match '(^|[;&|]\s*)gh\s+pr\s+create\b'
+# 줄바꿈도 명령 구분자로 본다. -match의 ^는 문자열 전체의 맨 앞에만 맞아서, 빼면 여러 줄 명령의 둘째 줄 이후를 놓친다.
+$isCommit = $command -match '(^|[;&|\r\n]\s*)git\s+(-C\s+\S+\s+|--\S+\s+)*commit\b'
+$isPr     = $command -match '(^|[;&|\r\n]\s*)gh\s+pr\s+create\b'
 if (-not ($isCommit -or $isPr)) { exit 0 }
 
 # amend / --no-edit 재작성은 새 변경이 아니므로 건너뛴다
@@ -113,11 +114,11 @@ if (-not $cwd) { $cwd = (Get-Location).Path }
 if ($command -match 'git\s+-C\s+"([^"]+)"') { $cwd = $Matches[1] }
 elseif ($command -match "git\s+-C\s+'([^']+)'") { $cwd = $Matches[1] }
 elseif ($command -match 'git\s+-C\s+(\S+)') { $cwd = $Matches[1] }
-# `cd <경로> && git commit` 형태도 잡는다. -C가 없으면 세션 cwd가 남아
+# `cd <경로> && git commit` 형태와, `cd <경로>` 다음 줄에 명령을 이어 쓴 형태도 잡는다. -C가 없으면 세션 cwd가 남아
 #   엉뚱한 레포의 HEAD를 읽는다 (실측 오탐: 문서 레포 커밋인데 다른 레포의 HEAD를 봤다).
-elseif ($command -match '(?:^|[;&|]\s*)cd\s+"([^"]+)"\s*&&') { $cwd = $Matches[1] }
-elseif ($command -match "(?:^|[;&|]\s*)cd\s+'([^']+)'\s*&&") { $cwd = $Matches[1] }
-elseif ($command -match '(?:^|[;&|]\s*)cd\s+([^\s;&|]+)\s*&&') { $cwd = $Matches[1] }
+elseif ($command -match '(?:^|[;&|\r\n]\s*)cd\s+"([^"]+)"\s*(?:&&|\r?\n)') { $cwd = $Matches[1] }
+elseif ($command -match "(?:^|[;&|\r\n]\s*)cd\s+'([^']+)'\s*(?:&&|\r?\n)") { $cwd = $Matches[1] }
+elseif ($command -match '(?:^|[;&|\r\n]\s*)cd\s+([^\s;&|]+)\s*(?:&&|\r?\n)') { $cwd = $Matches[1] }
 
 # 판정 대상 레포를 확정한다. 위 추출이 하위 디렉터리를 가리켜도 실제 저장소 루트로 정규화한다.
 $repoRoot = & git -C "$cwd" rev-parse --show-toplevel 2>$null
