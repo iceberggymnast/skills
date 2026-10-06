@@ -26,7 +26,8 @@ foreach ($p in @('tool_input', 'toolInput', 'input')) {
     if ($payload.$p -and $payload.$p.command) { $command = $payload.$p.command; break }
 }
 if (-not $command) { exit 0 }
-if ($command -notmatch '(?:^|[;&|]\s*)gh\s+(pr|issue)\s+(create|comment|edit)\b') { exit 0 }
+# 줄바꿈도 명령 구분자로 본다. -match의 ^는 문자열 전체의 맨 앞에만 맞아서, 빼면 여러 줄 명령의 둘째 줄 이후를 놓친다.
+if ($command -notmatch '(?:^|[;&|\r\n]\s*)gh\s+(pr|issue)\s+(create|comment|edit)\b') { exit 0 }
 $kind = $Matches[1]
 $verb = $Matches[2]
 $label = "gh $kind $verb"
