@@ -14,6 +14,8 @@
  - 정규식 근사다. 놓치는 것도 잘못 잡는 것도 있고, 판정자 단계가 그 오차를 흡수한다.
  - 문장 길이는 세지 않는다. 실측 평균이 31~63자라 "25자 이내 셋 연속" 같은 기준은 걸리지
    않았고, 실제로 걸린 것은 연결어미 없는 단정문의 연속이었다.
+ - 마지막 줄에 <details> 밖의 줄 수를 낸다. 팀원이 펼치지 않고 읽는 분량이다. 상한은 아직 없어서
+   걸린 항목으로 세지 않는다(SKILL.md "펼칠 것과 접을 것").
 """
 import io
 import re
@@ -68,6 +70,19 @@ def paragraphs(text):
         sents = [p.strip() for p in SENT_SPLIT.split(s) if p and len(p.strip()) > 3]
         if sents:
             yield no, ("bullet" if bullet else "prose"), bold_lead, sents
+
+
+def unfolded_lines(text):
+    """<details> 밖의 비어 있지 않은 줄 수. <details>·</details> 줄 자체는 세지 않는다."""
+    depth = 0
+    n = 0
+    for raw in text.splitlines():
+        s = raw.strip()
+        depth += s.count("<details")
+        if depth == 0 and s:
+            n += 1
+        depth = max(0, depth - s.count("</details>"))
+    return n
 
 
 def is_flat(sent):
@@ -140,6 +155,7 @@ def main(path):
         for no, s in items:
             print(f"L{no}: {s}")
     print(f"\n합계 {total}건")
+    print(f"펼친 부분 {unfolded_lines(text)}줄 (<details> 밖, 빈 줄 제외)")
 
 
 if __name__ == "__main__":
